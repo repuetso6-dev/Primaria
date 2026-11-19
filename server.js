@@ -6,7 +6,8 @@ const WebSocket = require('ws');
 
 const PORT = +process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
-const PUB = fs.existsSync(path.join(__dirname, 'public')) ? path.join(__dirname, 'public') : __dirname; // acepta carpeta public/ o todo suelto
+const CANDS = [path.join(__dirname, 'public'), __dirname, process.cwd()];
+const PUB = CANDS.find(d => fs.existsSync(path.join(d, 'index.html'))) || __dirname; // busca el juego donde esté
 const WEB = new Set(['index.html', 'cover.jpg', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest', 'sw.js']); // solo estos se publican
 const ROSTER = ['Aidalia', 'Arturo', 'Lucas', 'Hassiel', 'Rafael', 'Omar', 'Said', 'Abel', 'Bruno', 'Ezequiel',
   'Vianney', 'Adrian', 'Dañaría', 'Josue', 'Luana', 'Fernanda', 'Oriana', 'Jazmín', 'Leonel', 'Nayara'];
@@ -235,11 +236,11 @@ const server = http.createServer((req, res) => {
   let u; try { u = decodeURIComponent((req.url || '/').split('?')[0]); } catch (e) { res.writeHead(400); return res.end(); }
   if (u === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('ok'); }
   if (u === '/') u = '/index.html';
-  if (!WEB.has(u.slice(1))) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('No encontrado'); }
+  if (!WEB.has(u.slice(1))) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('No encontrado (v3): ' + u); }
   const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end(); }
   fs.readFile(f, (e, b) => {
-    if (e) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('No encontrado'); }
+    if (e) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('No encontrado (v3): falta el archivo ' + u.slice(1) + ' en el servidor'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream',
       'cache-control': (u === '/index.html' || u === '/sw.js') ? 'no-cache' : 'public, max-age=3600' });
     res.end(b);
@@ -277,6 +278,7 @@ setInterval(() => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('\n=== 6to Primaria · servidor en el puerto ' + PORT + ' ===');
+  console.log('Carpeta del juego: ' + PUB + ' | index.html: ' + (fs.existsSync(path.join(PUB, 'index.html')) ? 'SI' : 'NO'));
   console.log('Clave de admin: ' + db.adminKey);
   console.log('Códigos de los alumnos (guárdalos y pásale a cada uno SOLO el suyo):');
   for (const n of ROSTER) console.log('  ' + n.padEnd(10) + docs['admin/codes'][KK(n)]);
